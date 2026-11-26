@@ -1,0 +1,11 @@
+[
+  "test_feature.py::test_canonical_name_still_works",
+  "test_feature.py::test_alias_invokes_command",
+  "test_feature.py::test_alias_with_arguments",
+  "test_feature.py::test_alias_help_works",
+  "test_feature.py::test_command_help_lists_aliases",
+  "test_feature.py::test_group_help_lists_canonical_only",
+  "test_feature.py::test_unknown_command_still_fails",
+  "test_feature.py::test_command_object_stores_aliases",
+  "test_feature.py::test_alias_does_not_shadow_real_command"
+]

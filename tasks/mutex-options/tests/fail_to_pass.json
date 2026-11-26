@@ -1,0 +1,12 @@
+[
+  "test_feature.py::test_single_group_member_is_fine",
+  "test_feature.py::test_no_group_member_is_fine",
+  "test_feature.py::test_two_group_members_conflict",
+  "test_feature.py::test_three_group_members_conflict",
+  "test_feature.py::test_conflict_is_usage_error_exit_code_2",
+  "test_feature.py::test_defaults_do_not_count_as_given",
+  "test_feature.py::test_explicit_value_options_conflict",
+  "test_feature.py::test_separate_groups_do_not_interfere",
+  "test_feature.py::test_group_level_options_are_checked",
+  "test_feature.py::test_option_stores_exclusive_group"
+]

@@ -1,0 +1,89 @@
+diff --git a/src/click/shell_completion.py b/src/click/shell_completion.py
+index 9cf2314..9400bb9 100644
+--- a/src/click/shell_completion.py
++++ b/src/click/shell_completion.py
+@@ -267,6 +267,31 @@ Register-ArgumentCompleter -Native -CommandName %(prog_name)s -ScriptBlock {
+ }
+ """
+ 
++_SOURCE_NUSHELL = """\
++def "nu-complete %(prog_name)s" [context: string] {
++    let spans = ($context | split row --regex '\\s+')
++    let response = (
++        with-env {
++            %(complete_var)s: "nushell_complete",
++            COMP_WORDS: $context,
++            COMP_CWORD: (($spans | length) - 1)
++        } { ^%(prog_name)s }
++    )
++
++    $response
++    | lines
++    | chunks 3
++    | each {|group|
++        {
++            value: ($group | get 1)
++            description: (if ($group | get 2) == "_" { "" } else { $group | get 2 })
++        }
++    }
++}
++
++extern "%(prog_name)s" [...args: string@"nu-complete %(prog_name)s"]
++"""
++
+ 
+ class _SourceVarsDict(t.TypedDict):
+     complete_func: str
+@@ -547,9 +572,43 @@ class PowerShellComplete(ShellComplete):
+         return f"{item.type}\n{item.value}\n{help_}"
+ 
+ 
++class NushellComplete(ShellComplete):
++    """Shell completion for Nushell.
++
++    .. versionadded:: 8.4
++    """
++
++    name: t.ClassVar[str] = "nushell"
++    source_template: t.ClassVar[str] = _SOURCE_NUSHELL
++
++    def get_completion_args(self) -> tuple[list[str], str]:
++        cwords = split_arg_string(os.environ["COMP_WORDS"])
++        cword = int(os.environ["COMP_CWORD"])
++        args = cwords[1:cword]
++
++        try:
++            incomplete = cwords[cword]
++        except IndexError:
++            incomplete = ""
++
++        return args, incomplete
++
++    def format_completion(self, item: CompletionItem[str]) -> str:
++        # The Nushell script consumes three lines per completion (type,
++        # value, help), the same framing as the PowerShell class. Collapse
++        # newlines in help text so the framing stays intact, and use the
++        # "_" sentinel for "no help text".
++        if item.help:
++            help_ = item.help.replace("\r", " ").replace("\n", " ")
++        else:
++            help_ = "_"
++        return f"{item.type}\n{item.value}\n{help_}"
++
++
+ _available_shells: t.Final[dict[str, type[ShellComplete]]] = {
+     "bash": BashComplete,
+     "fish": FishComplete,
++    "nushell": NushellComplete,
+     "powershell": PowerShellComplete,
+     "zsh": ZshComplete,
+ }
+@@ -582,6 +641,8 @@ def get_completion_class(shell: t.Literal["bash"]) -> type[BashComplete]: ...
+ @t.overload
+ def get_completion_class(shell: t.Literal["fish"]) -> type[FishComplete]: ...
+ @t.overload
++def get_completion_class(shell: t.Literal["nushell"]) -> type[NushellComplete]: ...
++@t.overload
+ def get_completion_class(shell: t.Literal["zsh"]) -> type[ZshComplete]: ...
+ @t.overload
+ def get_completion_class(shell: str) -> type[ShellComplete] | None: ...

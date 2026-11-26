@@ -1,0 +1,129 @@
+diff --git a/src/click/__init__.py b/src/click/__init__.py
+index a34ab02..61f8c42 100644
+--- a/src/click/__init__.py
++++ b/src/click/__init__.py
+@@ -56,6 +56,7 @@ from .termui import unstyle as unstyle
+ from .types import BOOL as BOOL
+ from .types import Choice as Choice
+ from .types import DateTime as DateTime
++from .types import Duration as Duration
+ from .types import File as File
+ from .types import FLOAT as FLOAT
+ from .types import FloatRange as FloatRange
+diff --git a/src/click/types.py b/src/click/types.py
+index 5d11e9f..a24e00c 100644
+--- a/src/click/types.py
++++ b/src/click/types.py
+@@ -4,11 +4,13 @@ import abc
+ import collections.abc as cabc
+ import enum
+ import os
++import re
+ import stat
+ import sys
+ import typing as t
+ import uuid
+ from datetime import datetime
++from datetime import timedelta
+ from gettext import gettext as _
+ from gettext import ngettext
+ 
+@@ -572,6 +574,98 @@ class DateTime(ParamType[datetime]):
+         return "DateTime"
+ 
+ 
++class Duration(ParamType[timedelta]):
++    """The Duration type converts human-readable duration strings into
++    :class:`datetime.timedelta` objects.
++
++    A duration string is one or more ``<number><unit>`` groups, for example
++    ``"1h30m"``, ``"2d"``, ``"45s"``, ``"1w2d4h"`` or ``"1.5h"``. Groups may
++    be separated by whitespace. The supported units are ``w`` (weeks),
++    ``d`` (days), ``h`` (hours), ``m`` (minutes), ``s`` (seconds) and
++    ``ms`` (milliseconds), matched case-insensitively. A bare number with no
++    unit is interpreted as seconds. Negative durations are not accepted.
++
++    .. versionadded:: 8.4
++    """
++
++    name = "duration"
++
++    _unit_seconds: t.ClassVar[dict[str, float]] = {
++        "w": 604800.0,
++        "d": 86400.0,
++        "h": 3600.0,
++        "m": 60.0,
++        "s": 1.0,
++        "ms": 0.001,
++    }
++
++    _group_re: t.ClassVar[re.Pattern[str]] = re.compile(
++        r"(\d+(?:\.\d+)?)\s*(ms|[wdhms])", re.IGNORECASE
++    )
++
++    def get_metavar(self, param: Parameter, ctx: Context) -> str:
++        return "DURATION"
++
++    def convert(
++        self, value: t.Any, param: Parameter | None, ctx: Context | None
++    ) -> timedelta:
++        if isinstance(value, timedelta):
++            return value
++
++        if isinstance(value, (int, float)):
++            return timedelta(seconds=value)
++
++        if isinstance(value, str):
++            parsed = self._parse(value)
++
++            if parsed is not None:
++                return parsed
++
++        self.fail(
++            _("{value!r} is not a valid duration.").format(value=value),
++            param,
++            ctx,
++        )
++
++    def _parse(self, value: str) -> timedelta | None:
++        text = value.strip()
++
++        if not text:
++            return None
++
++        # A bare number means seconds.
++        try:
++            seconds = float(text)
++        except ValueError:
++            pass
++        else:
++            if seconds < 0:
++                return None
++
++            return timedelta(seconds=seconds)
++
++        total_seconds = 0.0
++        pos = 0
++
++        for match in self._group_re.finditer(text):
++            # Anything between groups other than whitespace is invalid.
++            if text[pos : match.start()].strip():
++                return None
++
++            amount = float(match.group(1))
++            unit = match.group(2).lower()
++            total_seconds += amount * self._unit_seconds[unit]
++            pos = match.end()
++
++        if pos == 0 or text[pos:].strip():
++            return None
++
++        return timedelta(seconds=total_seconds)
++
++    def __repr__(self) -> str:
++        return "Duration"
++
++
+ class _NumberParamTypeBase(
+     ParamType[_ValueT_co], t.Generic[_ValueT_contra, _ValueT_co]
+ ):

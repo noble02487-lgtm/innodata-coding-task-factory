@@ -1,0 +1,8 @@
+[
+  "test_feature.py::test_explicit_command_still_works",
+  "test_feature.py::test_no_args_runs_default",
+  "test_feature.py::test_unknown_first_arg_goes_to_default",
+  "test_feature.py::test_explicit_default_command_works",
+  "test_feature.py::test_default_attribute_stored",
+  "test_feature.py::test_default_receives_its_own_options_after_positional"
+]

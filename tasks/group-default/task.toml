@@ -1,0 +1,19 @@
+schema_version = "1.4"
+
+[metadata]
+name = "group-default"
+description = "Add a default parameter to click.Group: with no arguments, or an unknown first argument, the default subcommand runs with the remaining arguments."
+authors = ["Abhishek Phukan <noble02487@gmail.com>"]
+repository = "https://github.com/pallets/click"
+base_commit = "08b803cf32ceb2ae6a772c62d5da42757a897d44"
+license = "BSD-3-Clause"
+
+[verifier]
+timeout_sec = 900.0
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 900.0
+
+[environment]
+build_timeout_sec = 600.0

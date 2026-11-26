@@ -1,0 +1,63 @@
+diff --git a/src/click/core.py b/src/click/core.py
+index c3efc74..4b4ab8d 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -1761,6 +1761,7 @@ class Group(Command):
+         subcommand_metavar: str | None = None,
+         chain: bool = False,
+         result_callback: t.Callable[..., t.Any] | None = None,
++        default: str | None = None,
+         **kwargs: t.Any,
+     ) -> None:
+         super().__init__(name, **kwargs)
+@@ -1774,7 +1775,7 @@ class Group(Command):
+         self.commands = commands
+ 
+         if no_args_is_help is None:
+-            no_args_is_help = not invoke_without_command
++            no_args_is_help = not invoke_without_command and default is None
+ 
+         self.no_args_is_help = no_args_is_help
+         self.invoke_without_command = invoke_without_command
+@@ -1794,6 +1795,9 @@ class Group(Command):
+ 
+         self.subcommand_metavar = subcommand_metavar
+         self.chain = chain
++        #: The name of the subcommand to invoke when no subcommand is
++        #: given, or when the first argument does not match a subcommand.
++        self.default = default
+         # The result callback that is stored. This can be set or
+         # overridden with the :func:`result_callback` decorator.
+         self._result_callback = result_callback
+@@ -2046,6 +2050,9 @@ class Group(Command):
+                 value = ctx.invoke(self._result_callback, value, **ctx.params)
+             return value
+ 
++        if not ctx._protected_args and self.default is not None:
++            ctx._protected_args = [self.default]
++
+         if not ctx._protected_args:
+             if self.invoke_without_command:
+                 # No subcommand was invoked, so the result callback is
+@@ -2111,6 +2118,21 @@ class Group(Command):
+     def resolve_command(
+         self, ctx: Context, args: list[str]
+     ) -> tuple[str | None, Command | None, list[str]]:
++        # If a default subcommand is configured and the first argument is
++        # not the name of a known subcommand, hand all arguments to the
++        # default subcommand instead of failing.
++        if (
++            self.default is not None
++            and not self.chain
++            and args
++            and not args[0].startswith("-")
++            and self.get_command(ctx, make_str(args[0])) is None
++        ):
++            default_cmd = self.get_command(ctx, self.default)
++
++            if default_cmd is not None:
++                return self.default, default_cmd, args
++
+         cmd_name = make_str(args[0])
+ 
+         # Get the command

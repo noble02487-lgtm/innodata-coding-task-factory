@@ -1,0 +1,61 @@
+diff --git a/src/click/core.py b/src/click/core.py
+index c3efc74..2d93135 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -1055,6 +1055,7 @@ class Command:
+     no_args_is_help: bool
+     hidden: bool
+     deprecated: bool | str
++    aliases: list[str]
+ 
+     def __init__(
+         self,
+@@ -1070,6 +1071,7 @@ class Command:
+         no_args_is_help: bool = False,
+         hidden: bool = False,
+         deprecated: bool | str = False,
++        aliases: cabc.Sequence[str] | None = None,
+     ) -> None:
+         #: the name the command thinks it has.  Upon registering a command
+         #: on a :class:`Group` the group will default the command name
+@@ -1099,6 +1101,7 @@ class Command:
+         self.no_args_is_help = no_args_is_help
+         self.hidden = hidden
+         self.deprecated = deprecated
++        self.aliases = list(aliases) if aliases else []
+ 
+     def to_info_dict(self, ctx: Context) -> dict[str, t.Any]:
+         return {
+@@ -1316,6 +1319,14 @@ class Command:
+             with formatter.indentation():
+                 formatter.write_text(text)
+ 
++        if self.aliases:
++            formatter.write_paragraph()
++
++            with formatter.indentation():
++                formatter.write_text(
++                    _("Aliases: {names}").format(names=", ".join(self.aliases))
++                )
++
+     def format_options(self, ctx: Context, formatter: HelpFormatter) -> None:
+         """Writes all the options into the formatter if they exist."""
+         opts = []
+@@ -1983,7 +1994,16 @@ class Group(Command):
+         """Given a context and a command name, this returns a :class:`Command`
+         object if it exists or returns ``None``.
+         """
+-        return self.commands.get(cmd_name)
++        rv = self.commands.get(cmd_name)
++
++        if rv is not None:
++            return rv
++
++        for cmd in self.commands.values():
++            if cmd_name in cmd.aliases:
++                return cmd
++
++        return None
+ 
+     def list_commands(self, ctx: Context) -> list[str]:
+         """Returns a list of subcommand names in the order they should appear."""

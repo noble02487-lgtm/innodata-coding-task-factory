@@ -1,0 +1,7 @@
+[
+  "test_feature.py::test_nushell_class_is_registered",
+  "test_feature.py::test_nushell_source_script",
+  "test_feature.py::test_nushell_completion_output",
+  "test_feature.py::test_nushell_partial_word",
+  "test_feature.py::test_nushell_end_to_end_complete_env"
+]

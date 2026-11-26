@@ -1,0 +1,74 @@
+diff --git a/src/click/core.py b/src/click/core.py
+index c3efc74..a9608e3 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -1434,8 +1434,45 @@ class Command:
+             echo(style(message, fg="red"), err=True)
+ 
+         if self.callback is not None:
++            self._check_exclusive_options(ctx)
+             return ctx.invoke(self.callback, **ctx.params)
+ 
++    def _check_exclusive_options(self, ctx: Context) -> None:
++        """Raise a usage error if two or more options that share an
++        ``exclusive_group`` were explicitly provided (on the command line
++        or through an environment variable). Values coming from defaults
++        or the default map do not count as provided.
++
++        :meta private:
++        """
++        given: cabc.MutableMapping[str, list[Option]] = {}
++
++        for param in self.params:
++            if not isinstance(param, Option) or param.exclusive_group is None:
++                continue
++
++            source = ctx.get_parameter_source(param.name)
++
++            if source in (ParameterSource.COMMANDLINE, ParameterSource.ENVIRONMENT):
++                given.setdefault(param.exclusive_group, []).append(param)
++
++        for group_name, options in given.items():
++            if len(options) > 1:
++                names = ", ".join(
++                    next(
++                        (o for o in opt.opts if o.startswith("--")),
++                        opt.opts[0] if opt.opts else opt.name,
++                    )
++                    for opt in options
++                )
++                raise UsageError(
++                    _(
++                        "The options {names} are mutually exclusive"
++                        " (group {group!r})."
++                    ).format(names=names, group=group_name),
++                    ctx=ctx,
++                )
++
+     def shell_complete(self, ctx: Context, incomplete: str) -> list[CompletionItem]:
+         """Return a list of completions for the incomplete value. Looks
+         at the names of options and chained multi-commands.
+@@ -3129,6 +3166,7 @@ class Option(Parameter):
+     show_default: bool | str | None
+     show_choices: bool
+     show_envvar: bool
++    exclusive_group: str | None
+ 
+     def __init__(
+         self,
+@@ -3149,6 +3187,7 @@ class Option(Parameter):
+         show_choices: bool = True,
+         show_envvar: bool = False,
+         deprecated: bool | str = False,
++        exclusive_group: str | None = None,
+         **attrs: t.Any,
+     ) -> None:
+         super().__init__(
+@@ -3203,6 +3242,7 @@ class Option(Parameter):
+         self.show_default = show_default
+         self.show_choices = show_choices
+         self.show_envvar = show_envvar
++        self.exclusive_group = exclusive_group
+ 
+         # Phase 5: validate. Raises on illegal kwarg combinations.
+         self._validate(prompt, deprecated)
